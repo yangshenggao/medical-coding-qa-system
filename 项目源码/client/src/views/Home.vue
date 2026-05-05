@@ -91,7 +91,22 @@ let echartsLib = null
 
 async function ensureEcharts() {
   if (!echartsLib) {
-    echartsLib = await import('echarts')
+    const [
+      { use },
+      { CanvasRenderer },
+      { LineChart, PieChart },
+      { GridComponent, TooltipComponent, LegendComponent },
+      { graphic }
+    ] = await Promise.all([
+      import('echarts/core'),
+      import('echarts/renderers'),
+      import('echarts/charts'),
+      import('echarts/components'),
+      import('echarts/core')
+    ])
+    use([CanvasRenderer, LineChart, PieChart, GridComponent, TooltipComponent, LegendComponent])
+    const { init } = await import('echarts/core')
+    echartsLib = { init, graphic }
   }
   return echartsLib
 }

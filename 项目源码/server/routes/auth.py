@@ -4,7 +4,7 @@
 """
 from flask import Blueprint, request, g
 from models.user import User
-from utils.auth import md5_encrypt, generate_token, login_required
+from utils.auth import verify_password, hash_password, generate_token, login_required
 from utils.response import success, error
 
 # 创建认证蓝图
@@ -33,8 +33,8 @@ def login():
     if not user:
         return error('用户名或密码错误')
 
-    # 验证密码（MD5加密后比对）
-    if user.password != md5_encrypt(password):
+    # 验证密码
+    if not verify_password(password, user.password):
         return error('用户名或密码错误')
 
     # 检查用户状态

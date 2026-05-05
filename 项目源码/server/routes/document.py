@@ -108,7 +108,7 @@ def upload():
     except OllamaServiceError as e:
         doc.status = 'failed'
         db.session.commit()
-        return error(str(e))
+        return error('Ollama 服务异常，请确认嵌入模型已安装并可用')
     except ConnectionError:
         doc.status = 'failed'
         db.session.commit()
@@ -116,10 +116,8 @@ def upload():
     except Exception as e:
         doc.status = 'failed'
         db.session.commit()
-        err_msg = str(e)
-        if 'status code' in err_msg:
-            return error(f'Ollama服务处理异常，请检查Ollama运行状态和系统资源: {err_msg}')
-        return error(f'文档向量化失败: {err_msg}')
+        current_app.logger.error(f'文档向量化失败: {e}', exc_info=True)
+        return error('文档向量化失败，请检查 Ollama 服务状态后重试')
 
     return success(doc.to_dict(), '上传成功')
 

@@ -29,6 +29,17 @@ def create_app():
     # 启用跨域支持
     CORS(app, supports_credentials=True)
 
+    # 初始化 API 限流
+    from flask_limiter import Limiter
+    from flask_limiter.util import get_remote_address
+    limiter = Limiter(
+        app=app,
+        key_func=get_remote_address,
+        default_limits=["200 per minute"],
+        storage_uri="memory://"
+    )
+    app.limiter = limiter
+
     # 确保上传目录存在
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
@@ -59,6 +70,11 @@ def create_app():
             'service': 'backend',
             'status': 'ok'
         }, 'OK')
+
+    # 对高消耗接口设置更严格的限流
+    limiter.limit("10 per minute")(app.view_functions.get('chat.ask', lambda: None))
+    limiter.limit("20 per minute")(app.view_functions.get('meddra.semantic_search', lambda: None))
+    limiter.limit("5 per minute")(app.view_functions.get('meddra.explain_batch', lambda: None))
 
     return app
 

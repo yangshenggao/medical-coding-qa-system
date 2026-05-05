@@ -83,6 +83,22 @@ router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token')
   const userInfo = JSON.parse(localStorage.getItem('userInfo') || 'null')
 
+  // 检查 token 是否过期（解码 JWT payload）
+  if (token && to.path !== '/login') {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]))
+      if (payload.exp && payload.exp * 1000 < Date.now()) {
+        localStorage.removeItem('token')
+        localStorage.removeItem('userInfo')
+        return next('/login')
+      }
+    } catch {
+      localStorage.removeItem('token')
+      localStorage.removeItem('userInfo')
+      return next('/login')
+    }
+  }
+
   if (!token && to.path !== '/login') {
     return next('/login')
   }

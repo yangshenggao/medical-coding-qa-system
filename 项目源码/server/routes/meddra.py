@@ -3,7 +3,7 @@ MedDRA 术语查询路由
 提供术语搜索、层级浏览和语义搜索接口
 """
 import re
-from flask import Blueprint, request
+from flask import Blueprint, request, current_app
 from sqlalchemy import func
 from models import db
 from models.meddra import MeddraTerm
@@ -212,8 +212,8 @@ def semantic_search():
         for doc, score in docs:
             level = doc.metadata.get('level', '')
             code = doc.metadata.get('code', '')
-            term = MeddraTerm.query.filter_by(code=code, language=language).first()
-            chain = _build_term_chain(term, language) if term else {
+            matched_term = MeddraTerm.query.filter_by(code=code, language=language).first()
+            chain = _build_term_chain(matched_term, language) if matched_term else {
                 'llt_code': '',
                 'llt_name': '',
                 'pt_code': '',
@@ -231,7 +231,8 @@ def semantic_search():
 
         return success(results)
     except Exception as e:
-        return error(f'语义搜索失败: {str(e)}')
+        current_app.logger.error(f'语义搜索失败: {e}', exc_info=True)
+        return error('语义搜索失败，请稍后重试')
 
 
 @meddra_bp.route('/explain_batch', methods=['POST'])
@@ -270,7 +271,8 @@ def explain_batch():
         )
         return success(result)
     except Exception as e:
-        return error(f'批量解释验证失败: {str(e)}')
+        current_app.logger.error(f'批量解释验证失败: {e}', exc_info=True)
+        return error('批量解释验证失败，请稍后重试')
 
 
 @meddra_bp.route('/hierarchy', methods=['GET'])
@@ -279,51 +281,55 @@ def hierarchy():
     """
     获取 MedDRA 层级结构
     查询参数: language
+    一次性加载所有层级数据，在内存中组装树结构，避免 N+1 查询
     """
     language = request.args.get('language', 'cn')
 
-    soc_terms = MeddraTerm.query.filter_by(
-        language=language,
-        term_level='SOC'
-    ).order_by(MeddraTerm.name).all()
+    # 一次性查出所有层级的术语
+    all_terms = MeddraTerm.query.filter_by(language=language).filter(
+        MeddraTerm.term_level.in_(['SOC', 'HLGT', 'HLT', 'PT'])
+    ).all()
 
+    # 按层级分组
+    soc_map = {}
+    hlgt_map = {}
+    hlt_map = {}
+    pt_by_parent = {}  # parent_code -> [pt, ...]
+    hlt_by_parent = {}  # parent_code(hlgt) -> [hlt, ...]
+    hlgt_by_soc = {}  # soc_code -> [hlgt, ...]
+
+    for term in all_terms:
+        if term.term_level == 'SOC':
+            soc_map[term.code] = term
+        elif term.term_level == 'HLGT':
+            hlgt_map[term.code] = term
+            hlgt_by_soc.setdefault(term.soc_code, []).append(term)
+        elif term.term_level == 'HLT':
+            hlt_map[term.code] = term
+            hlt_by_parent.setdefault(term.parent_code, []).append(term)
+        elif term.term_level == 'PT':
+            pt_by_parent.setdefault(term.parent_code, []).append(term)
+
+    # 组装树结构
     result = []
-    for soc in soc_terms:
-        hlgt_terms = MeddraTerm.query.filter_by(
-            language=language,
-            term_level='HLGT',
-            soc_code=soc.code
-        ).order_by(MeddraTerm.name).all()
-
+    for soc_code in sorted(soc_map.keys(), key=lambda c: soc_map[c].name):
+        soc = soc_map[soc_code]
         hlgt_list = []
-        for hlgt in hlgt_terms:
-            hlt_terms = MeddraTerm.query.filter_by(
-                language=language,
-                term_level='HLT',
-                parent_code=hlgt.code
-            ).order_by(MeddraTerm.name).all()
-
+        for hlgt in sorted(hlgt_by_soc.get(soc_code, []), key=lambda t: t.name):
             hlt_list = []
-            for hlt in hlt_terms:
-                pt_terms = MeddraTerm.query.filter_by(
-                    language=language,
-                    term_level='PT',
-                    parent_code=hlt.code
-                ).order_by(MeddraTerm.name).limit(50).all()
-
-                pt_list = [{'code': pt.code, 'name': pt.name} for pt in pt_terms]
+            for hlt in sorted(hlt_by_parent.get(hlgt.code, []), key=lambda t: t.name):
+                pts = sorted(pt_by_parent.get(hlt.code, []), key=lambda t: t.name)[:50]
+                pt_list = [{'code': pt.code, 'name': pt.name} for pt in pts]
                 hlt_list.append({
                     'code': hlt.code,
                     'name': hlt.name,
                     'pts': pt_list
                 })
-
             hlgt_list.append({
                 'code': hlgt.code,
                 'name': hlgt.name,
                 'hlts': hlt_list
             })
-
         result.append({
             'code': soc.code,
             'name': soc.name,

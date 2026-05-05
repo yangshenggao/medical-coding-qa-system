@@ -5,7 +5,7 @@
 import uuid
 import json
 from datetime import datetime, timedelta
-from flask import Blueprint, request, g
+from flask import Blueprint, request, g, current_app
 from models import db
 from models.chat_history import ChatHistory
 from models.knowledge_base import KnowledgeBase
@@ -46,10 +46,12 @@ def ask():
 
     try:
         from services.rag_service import RAGService
-        rag_service = RAGService()
+        if not hasattr(current_app, '_rag_service'):
+            current_app._rag_service = RAGService()
+        rag_service = current_app._rag_service
         answer, source_docs = rag_service.ask(question, kb.id, kb.kb_name)
     except Exception as e:
-        return error(f'问答服务异常: {str(e)}')
+        return error(f'问答服务异常，请稍后重试')
 
     chat = ChatHistory(
         user_id=g.user_id,

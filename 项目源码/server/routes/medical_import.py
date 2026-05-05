@@ -4,6 +4,7 @@
 """
 import csv
 import os
+import threading
 from datetime import datetime
 
 from flask import Blueprint, g, request
@@ -17,6 +18,25 @@ from models.whodrug import WhodrugDrug
 from services.vector_service import OllamaServiceError, VectorService
 from utils.auth import admin_required
 from utils.response import error, page_response, success
+
+# 导入并发锁，防止同一类型重复导入
+_import_locks = {}
+_locks_guard = threading.Lock()
+
+
+def _acquire_import_lock(dict_type):
+    """尝试获取指定词典类型的导入锁，返回是否成功"""
+    with _locks_guard:
+        if dict_type in _import_locks:
+            return False
+        _import_locks[dict_type] = True
+        return True
+
+
+def _release_import_lock(dict_type):
+    """释放指定词典类型的导入锁"""
+    with _locks_guard:
+        _import_locks.pop(dict_type, None)
 
 medical_import_bp = Blueprint('medical_import', __name__)
 
@@ -614,10 +634,14 @@ def import_whodrug():
     """导入 WHODrug 数据"""
     data = request.get_json() or {}
     language = data.get('language', 'cn')
+    lock_key = f'whodrug_{language}'
+
+    if not _acquire_import_lock(lock_key):
+        return error(f'WHODrug {language} 正在导入中，请勿重复操作')
 
     import_log = ImportLog(
         user_id=g.user_id,
-        dict_type=f'whodrug_{language}',
+        dict_type=lock_key,
         file_name=f'WHODrug {language}',
         status='running'
     )
@@ -643,6 +667,8 @@ def import_whodrug():
         import_log.complete_time = datetime.now()
         db.session.commit()
         return error(f'导入失败: {str(e)}')
+    finally:
+        _release_import_lock(lock_key)
 
 
 @medical_import_bp.route('/meddra', methods=['POST'])
@@ -651,10 +677,14 @@ def import_meddra():
     """导入 MedDRA 数据"""
     data = request.get_json() or {}
     language = data.get('language', 'cn')
+    lock_key = f'meddra_{language}'
+
+    if not _acquire_import_lock(lock_key):
+        return error(f'MedDRA {language} 正在导入中，请勿重复操作')
 
     import_log = ImportLog(
         user_id=g.user_id,
-        dict_type=f'meddra_{language}',
+        dict_type=lock_key,
         file_name=f'MedDRA {language}',
         status='running'
     )
@@ -685,6 +715,8 @@ def import_meddra():
         import_log.complete_time = datetime.now()
         db.session.commit()
         return error(f'导入失败: {str(e)}')
+    finally:
+        _release_import_lock(lock_key)
 
 
 @medical_import_bp.route('/meddra_smq', methods=['POST'])
@@ -693,10 +725,14 @@ def import_meddra_smq():
     """导入 MedDRA SMQ 数据"""
     data = request.get_json() or {}
     language = data.get('language', 'cn')
+    lock_key = f'smq_{language}'
+
+    if not _acquire_import_lock(lock_key):
+        return error(f'MedDRA SMQ {language} 正在导入中，请勿重复操作')
 
     import_log = ImportLog(
         user_id=g.user_id,
-        dict_type=f'smq_{language}',
+        dict_type=lock_key,
         file_name=f'MedDRA SMQ {language}',
         status='running'
     )
@@ -724,6 +760,8 @@ def import_meddra_smq():
         import_log.complete_time = datetime.now()
         db.session.commit()
         return error(f'导入失败: {str(e)}')
+    finally:
+        _release_import_lock(lock_key)
 
 
 @medical_import_bp.route('/meddra_docs', methods=['POST'])
@@ -733,10 +771,14 @@ def import_meddra_docs():
     data = request.get_json() or {}
     language = data.get('language', 'cn')
     include_reference = bool(data.get('include_reference', False))
+    lock_key = f'md_docs_{language}'
+
+    if not _acquire_import_lock(lock_key):
+        return error(f'MedDRA 文档 {language} 正在导入中，请勿重复操作')
 
     import_log = ImportLog(
         user_id=g.user_id,
-        dict_type=f'md_docs_{language}',
+        dict_type=lock_key,
         file_name=f'MedDRA Docs {language}',
         status='running'
     )
@@ -761,6 +803,8 @@ def import_meddra_docs():
         import_log.complete_time = datetime.now()
         db.session.commit()
         return error(f'导入失败: {str(e)}')
+    finally:
+        _release_import_lock(lock_key)
 
 
 @medical_import_bp.route('/logs', methods=['GET'])

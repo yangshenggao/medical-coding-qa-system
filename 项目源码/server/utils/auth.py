@@ -3,18 +3,42 @@ JWT认证工具
 提供Token生成、验证以及登录权限装饰器
 """
 import jwt
-import hashlib
 from datetime import datetime, timedelta
 from functools import wraps
 from flask import request, g, current_app
+from werkzeug.security import generate_password_hash, check_password_hash
+
+
+def hash_password(password):
+    """
+    安全密码哈希（bcrypt/scrypt）
+    :param password: 原始密码
+    :return: 哈希后的字符串
+    """
+    return generate_password_hash(password)
+
+
+def verify_password(password, password_hash):
+    """
+    验证密码是否匹配
+    :param password: 用户输入的密码
+    :param password_hash: 数据库中存储的哈希
+    :return: 是否匹配
+    """
+    # 兼容旧版 MD5 哈希（32位十六进制）
+    import hashlib
+    if len(password_hash) == 32 and all(c in '0123456789abcdef' for c in password_hash):
+        return hashlib.md5(password.encode('utf-8')).hexdigest() == password_hash
+    return check_password_hash(password_hash, password)
 
 
 def md5_encrypt(text):
     """
-    MD5加密
+    MD5加密（仅用于兼容旧数据，新用户请使用 hash_password）
     :param text: 原始字符串
     :return: MD5加密后的字符串
     """
+    import hashlib
     return hashlib.md5(text.encode('utf-8')).hexdigest()
 
 

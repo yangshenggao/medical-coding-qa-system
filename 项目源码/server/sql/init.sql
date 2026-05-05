@@ -21,7 +21,7 @@ DROP TABLE IF EXISTS t_user;
 CREATE TABLE t_user (
     id INT PRIMARY KEY AUTO_INCREMENT COMMENT '用户ID',
     username VARCHAR(50) NOT NULL UNIQUE COMMENT '用户名',
-    password VARCHAR(64) NOT NULL COMMENT '密码（MD5加密）',
+    password VARCHAR(255) NOT NULL COMMENT '密码（哈希存储）',
     nickname VARCHAR(50) DEFAULT '' COMMENT '昵称',
     role VARCHAR(10) NOT NULL DEFAULT 'user' COMMENT '角色：admin-管理员，user-普通用户',
     avatar VARCHAR(255) DEFAULT '' COMMENT '头像地址',
@@ -91,7 +91,8 @@ CREATE TABLE t_whodrug (
     create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '导入时间',
     INDEX idx_mpid (mpid),
     INDEX idx_drug_code (drug_code),
-    INDEX idx_language (language)
+    INDEX idx_language (language),
+    INDEX idx_lang_drugname (language, drug_name(80))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='WHODrug药物表';
 
 -- MedDRA术语表
@@ -108,7 +109,10 @@ CREATE TABLE t_meddra (
     INDEX idx_code (code),
     INDEX idx_level (term_level),
     INDEX idx_language (language),
-    INDEX idx_soc (soc_code)
+    INDEX idx_soc (soc_code),
+    INDEX idx_lang_level_name (language, term_level, name(50)),
+    INDEX idx_lang_level_parent (language, term_level, parent_code),
+    INDEX idx_lang_name (language, name(80))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='MedDRA术语表';
 
 -- MedDRA SMQ主表
