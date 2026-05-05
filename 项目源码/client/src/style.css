@@ -1,0 +1,130 @@
+/* 全局样式 */
+:root {
+  --med-bg: #f3eee6;
+  --med-bg-soft: #ebe3d6;
+  --med-panel: rgba(255, 252, 246, 0.88);
+  --med-panel-strong: #fffaf2;
+  --med-ink: #1f332d;
+  --med-ink-soft: #53655f;
+  --med-line: rgba(64, 84, 77, 0.18);
+  --med-line-strong: rgba(64, 84, 77, 0.32);
+  --med-accent: #8b3d2f;
+  --med-accent-soft: #b86a57;
+  --med-highlight: #d2b486;
+  --med-shadow: 0 22px 50px rgba(46, 54, 48, 0.08);
+  --med-shadow-soft: 0 12px 26px rgba(46, 54, 48, 0.06);
+  --med-radius-lg: 22px;
+  --med-radius-md: 16px;
+  --med-radius-sm: 10px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #app {
+  width: 100%;
+  height: 100%;
+  font-family: 'Avenir Next', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  background: var(--med-bg);
+  color: var(--med-ink);
+}
+
+body {
+  background:
+    radial-gradient(circle at top left, rgba(210, 180, 134, 0.24), transparent 28%),
+    linear-gradient(135deg, #f4efe7 0%, #ece4d7 52%, #f7f3eb 100%);
+  background-attachment: fixed;
+}
+
+a {
+  color: inherit;
+}
+
+#app {
+  position: relative;
+}
+
+#app::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(86, 102, 94, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(86, 102, 94, 0.04) 1px, transparent 1px);
+  background-size: 24px 24px;
+  mask-image: radial-gradient(circle at center, black 35%, transparent 100%);
+  opacity: 0.45;
+}
+
+.page-container {
+  position: relative;
+}
+
+.page-container .el-card {
+  border-radius: var(--med-radius-lg);
+  border: 1px solid var(--med-line);
+  background: var(--med-panel);
+  box-shadow: var(--med-shadow-soft);
+  overflow: hidden;
+  backdrop-filter: blur(12px);
+}
+
+.page-container .el-card::before {
+  content: '';
+  display: block;
+  height: 3px;
+  background: linear-gradient(90deg, var(--med-accent) 0%, var(--med-highlight) 48%, transparent 100%);
+}
+
+.page-container .el-table {
+  --el-table-header-bg-color: rgba(232, 223, 209, 0.72);
+  --el-table-row-hover-bg-color: rgba(210, 180, 134, 0.12);
+  --el-table-border-color: rgba(64, 84, 77, 0.1);
+  --el-table-text-color: var(--med-ink);
+  --el-table-header-text-color: var(--med-ink-soft);
+  border-radius: var(--med-radius-md);
+}
+
+.page-container .el-input__wrapper,
+.page-container .el-textarea__inner,
+.page-container .el-select__wrapper,
+.page-container .el-select .el-input__wrapper {
+  border-radius: var(--med-radius-sm);
+  box-shadow: 0 0 0 1px rgba(64, 84, 77, 0.12) inset;
+  background: rgba(255, 252, 247, 0.84);
+}
+
+.page-container .el-button--primary {
+  --el-button-bg-color: var(--med-accent);
+  --el-button-border-color: var(--med-accent);
+  --el-button-hover-bg-color: var(--med-accent-soft);
+  --el-button-hover-border-color: var(--med-accent-soft);
+}
+
+.page-container .el-pagination {
+  --el-pagination-button-bg-color: rgba(255, 252, 246, 0.9);
+  --el-pagination-hover-color: var(--med-accent);
+}
+
+.page-container .el-tag {
+  border-radius: 999px;
+}
+
+/* 滚动条美化 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(96, 111, 104, 0.42);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}

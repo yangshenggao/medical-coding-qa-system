@@ -1,0 +1,60 @@
+# 知识库文件
+知识库文件/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+.venv*/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.env
+.env.local
+
+# 数据库和临时文件
+*.sqlite3
+chroma_data/
+chroma_medical/
+chroma_data_backup*/
+uploads/
+*.log
+
+# Runtime
+.runtime/
+
+# 项目运行截图
+项目运行截图/

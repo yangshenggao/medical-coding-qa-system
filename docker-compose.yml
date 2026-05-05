@@ -1,0 +1,105 @@
+services:
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-db_medical_coding}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-medical123456}
+    ports:
+      - "${MYSQL_PORT:-3308}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./项目源码/server/sql/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-p${MYSQL_PASSWORD:-medical123456}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+
+  ollama-init:
+    image: ollama/ollama:latest
+    profiles: ["init"]
+    depends_on:
+      - ollama
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_LLM_MODEL: ${OLLAMA_LLM_MODEL:-qwen3:4b}
+      OLLAMA_EMBED_MODEL: ${OLLAMA_EMBED_MODEL:-qwen3-embedding:0.6b}
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      until ollama list >/dev/null 2>&1; do sleep 2; done &&
+      ollama pull "$$OLLAMA_LLM_MODEL" &&
+      ollama pull "$$OLLAMA_EMBED_MODEL"
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    environment:
+      SECRET_KEY: ${SECRET_KEY:-medical-coding-secret-2026}
+      FLASK_HOST: 0.0.0.0
+      FLASK_PORT: 5002
+      FLASK_DEBUG: "false"
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: ${MYSQL_USER:-root}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-medical123456}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-db_medical_coding}
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_LLM_MODEL: ${OLLAMA_LLM_MODEL:-qwen3:4b}
+      OLLAMA_EMBED_MODEL: ${OLLAMA_EMBED_MODEL:-qwen3-embedding:0.6b}
+      OLLAMA_JUDGE_MODEL: ${OLLAMA_JUDGE_MODEL:-qwen3:4b}
+      OLLAMA_VERIFIER_MODEL: ${OLLAMA_VERIFIER_MODEL:-qwen3:4b}
+      CHROMA_PERSIST_DIR: /app/data/chroma
+      UPLOAD_FOLDER: /app/data/uploads
+      MEDICAL_DICT_DIR: /app/data/dicts
+    ports:
+      - "${BACKEND_PORT:-5002}:5002"
+    volumes:
+      - backend-chroma:/app/data/chroma
+      - backend-uploads:/app/data/uploads
+      - ./知识库文件:/app/data/dicts:ro
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:5002/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1/"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+
+volumes:
+  mysql-data:
+  ollama-data:
+  backend-chroma:
+  backend-uploads:
